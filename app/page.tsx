@@ -1,108 +1,183 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
-import { Phone, MapPin, CheckCircle2, ShoppingBag } from 'lucide-react'
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { Phone, MapPin, ShoppingBag, ArrowUpDown, Filter } from "lucide-react";
+
+// 1. Define your simple categories
+const CATEGORIES = ["All", "Paper", "Cloth"];
 
 export default function Marketplace() {
-  const [products, setProducts] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // 2. State for Filters & Sorting
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [sortAscending, setSortAscending] = useState(true); // true = Low to High
 
   useEffect(() => {
-    // 1. Initialize Telegram Web App
-    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
-      const tg = (window as any).Telegram.WebApp
-      tg.ready()
-      tg.expand() // Opens the app to full height
+    // Initialize Telegram
+    if (typeof window !== "undefined" && (window as any).Telegram?.WebApp) {
+      const tg = (window as any).Telegram.WebApp;
+      tg.ready();
+      tg.expand();
     }
 
-    // 2. Fetch Products and Seller info from Supabase
-    async function getProducts() {
+    // Fetch Data
+    async function fetchData() {
       const { data, error } = await supabase
-        .from('products')
-        .select(`
-          *,
-          sellers (
-            name,
-            phone_number,
-            location,
-            is_verified
-          )
-        `)
-      
-      if (!error && data) {
-        setProducts(data)
-      }
-      setLoading(false)
+        .from("products")
+        .select(`*, sellers(name, phone_number, location, is_verified)`);
+
+      if (!error && data) setProducts(data);
+      setLoading(false);
     }
 
-    getProducts()
-  }, [])
+    fetchData();
+  }, []);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-white">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-600"></div>
-      </div>
-    )
-  }
+  // 3. THE LOGIC: Filter -> Then Sort
+  const displayedProducts = products
+    .filter((product) => {
+      // If "All", return everything. Otherwise, match the material_type.
+      return (
+        selectedCategory === "All" || product.material_type === selectedCategory
+      );
+    })
+    .sort((a, b) => {
+      // Sort by Price
+      return sortAscending
+        ? a.price_per_unit - b.price_per_unit // Low to High
+        : b.price_per_unit - a.price_per_unit; // High to Low
+    });
 
   return (
     <main className="min-h-screen bg-gray-50 pb-20">
-      {/* Header */}
-      <header className="bg-green-600 text-white p-6 rounded-b-3xl shadow-lg">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <ShoppingBag /> Green Supply Eth
+      {/* HEADER */}
+      <header className="bg-green-700 text-white p-5 rounded-b-3xl shadow-md sticky top-0 z-10">
+        <h1 className="text-xl font-bold flex items-center gap-2">
+          <ShoppingBag className="text-green-300" /> Green Supply
         </h1>
-        <p className="text-green-100 text-sm mt-1">Legal packaging for a cleaner Ethiopia 🇪🇹</p>
+
+        {/* CONTROLS ROW */}
+        <div className="flex justify-between items-center mt-4">
+          {/* A. Category Filters */}
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                  selectedCategory === cat
+                    ? "bg-white text-green-700 shadow-sm"
+                    : "bg-green-800 text-green-100 border border-green-600"
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {/* B. Sort Toggle */}
+          <button
+            onClick={() => setSortAscending(!sortAscending)}
+            className="flex items-center gap-1 text-xs font-medium bg-green-900/50 px-3 py-1.5 rounded-lg border border-green-600 ml-2"
+          >
+            <ArrowUpDown size={12} />
+            {sortAscending ? "Price: Low" : "Price: High"}
+          </button>
+        </div>
       </header>
 
-      {/* Product List */}
+      {/* PRODUCT GRID */}
       <div className="p-4 grid gap-4">
-        {products.map((product) => (
-          <div key={product.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 transition-transform active:scale-95">
-            <div className="flex justify-between items-start">
-              <div>
-                <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full uppercase">
-                  {product.material_type}
-                </span>
-                <h2 className="text-lg font-bold text-gray-800 mt-1">{product.title}</h2>
-              </div>
-              <div className="text-right">
-                <p className="text-xl font-black text-gray-900">{product.price_per_unit} <span className="text-sm font-normal text-gray-500">ETB</span></p>
-                <p className="text-xs text-gray-400">Min: {product.min_order_qty} pcs</p>
-              </div>
-            </div>
-
-            <hr className="my-3 border-gray-50" />
-
-            <div className="flex items-center gap-3 text-sm text-gray-600 mb-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-1 font-medium text-gray-800">
-                  {product.sellers.name}
-                  {product.sellers.is_verified && <CheckCircle2 size={14} className="text-blue-500 fill-blue-500 text-white" />}
-                </div>
-                <div className="flex items-center gap-1 text-xs text-gray-400">
-                  <MapPin size={12} /> {product.sellers.location}
-                </div>
-              </div>
-            </div>
-
-            {/* CALL BUTTON */}
-            <a 
-              href={`tel:${product.sellers.phone_number}`}
-              className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-md shadow-green-100"
-            >
-              <Phone size={18} /> Call Seller
-            </a>
+        {loading ? (
+          <div className="text-center py-10 text-gray-400">
+            Loading market...
           </div>
-        ))}
-      </div>
+        ) : displayedProducts.length > 0 ? (
+          displayedProducts.map((product) => (
+            <div
+              key={product.id}
+              className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100"
+            >
+              <div className="relative group">
+                {/* Horizontal Scroll Container */}
+                <div className="h-48 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide bg-gray-100">
+                  {product.image_url && product.image_url.length > 0 ? (
+                    product.image_url.map((url: string, index: number) => (
+                      <div
+                        key={index}
+                        className="min-w-full h-full snap-center flex-shrink-0"
+                      >
+                        <img
+                          src={url}
+                          alt={`${product.title} - ${index + 1}`}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                    ))
+                  ) : (
+                    <div className="min-w-full flex items-center justify-center h-full text-gray-300">
+                      <ShoppingBag size={48} className="opacity-10" />
+                    </div>
+                  )}
+                </div>
 
-      {/* Simple Footer Disclaimer */}
-      <p className="text-center text-xs text-gray-400 px-10 mt-4">
-        Ensure bags meet EPA standards (0.03mm) before purchase.
-      </p>
+                {/* Price Tag Overlay (Top Right) */}
+                <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-md text-white text-xs px-3 py-1.5 rounded-full font-bold z-10">
+                  {product.price_per_unit} ETB
+                </div>
+
+                {/* SWIPE INDICATORS (The Dots) */}
+                {product.image_url?.length > 1 && (
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 bg-black/20 px-2 py-1 rounded-full backdrop-blur-sm">
+                    {product.image_url.map((_: any, i: number) => (
+                      <div
+                        key={i}
+                        className="w-1.5 h-1.5 rounded-full bg-white/60"
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* DETAILS SECTION */}
+              <div className="p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h2 className="font-bold text-gray-800 text-lg leading-tight">
+                      {product.title}
+                    </h2>
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded mt-1 inline-block">
+                      Min: {product.min_order_qty} pcs
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between mt-4">
+                  <div className="flex items-center gap-1 text-xs text-gray-500">
+                    <MapPin size={12} />
+                    {product.sellers.location}
+                  </div>
+
+                  <a
+                    href={`tel:${product.sellers.phone_number}`}
+                    className="bg-green-50 text-green-700 border border-green-200 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 active:bg-green-100"
+                  >
+                    <Phone size={14} /> Call
+                  </a>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="text-center py-12 text-gray-400">
+            <p>No {selectedCategory} bags found.</p>
+          </div>
+        )}
+      </div>
     </main>
-  )
+  );
 }
