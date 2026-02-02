@@ -64,14 +64,16 @@ export default function AdminPage() {
   if (loading) return <div className="p-10 text-center">Verifying...</div>;
 
   if (!isAdmin) {
-    return (
-      <div className="h-screen flex flex-col items-center justify-center p-6 text-center">
-        <ShieldAlert size={64} className="text-red-500 mb-4" />
-        <h1 className="text-2xl font-bold text-gray-800">Access Denied</h1>
-        <p className="text-gray-500 mt-2">Only the store owner can access this page.</p>
+  return (
+    <div className="p-10 text-center">
+      <h1 className="text-red-500 font-bold">Access Denied</h1>
+      <div className="mt-4 p-4 bg-gray-100 rounded text-xs text-left overflow-auto">
+        <p><strong>Your Current ID:</strong> {typeof window !== "undefined" ? (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.id || "Not in Telegram" : "Loading..."}</p>
+        <p><strong>Expected ID:</strong> {process.env.NEXT_PUBLIC_ADMIN_TELEGRAM_ID || "Not Set in Env"}</p>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   return (
     <main className="min-h-screen bg-gray-50 p-6 pb-20">
