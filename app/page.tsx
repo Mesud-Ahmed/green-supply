@@ -65,11 +65,11 @@ export default function Marketplace() {
   return (
     <main className="min-h-screen bg-gray-50 pb-20">
       {/* HEADER */}
-      <header className="bg-green-700 text-white p-5 rounded-b-3xl shadow-md sticky top-0 z-10">
+      <header className="bg-green-700 text-white p-5 rounded-b-3xl shadow-md sticky top-0 z-50">
         {/* TOP ROW: Logo and Admin Button */}
         <div className="flex justify-between items-center">
           <h1 className="text-xl font-bold flex items-center gap-2">
-            <ShoppingBag className="text-green-300" /> Green Supply
+            <ShoppingBag className="text-green-300" /> Ethio Paper Bags
           </h1>
 
           {isAdmin && (
@@ -106,6 +106,7 @@ export default function Marketplace() {
             onClick={() => setSortAscending(!sortAscending)}
             className="flex items-center gap-1 text-xs font-medium bg-green-900/30 px-3 py-1.5 rounded-lg border border-green-600 ml-2 whitespace-nowrap"
           >
+            <h2>price</h2>
             <ArrowUpDown size={12} />
             {sortAscending ? "Low" : "High"}
           </button>
@@ -174,7 +175,7 @@ export default function Marketplace() {
                       {product.title}
                     </h2>
                     <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded mt-1 inline-block">
-                      Min: {product.min_order_qty} pcs
+                      Min Order: {product.min_order_qty} pcs
                     </span>
                   </div>
                 </div>
