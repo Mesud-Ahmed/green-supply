@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Phone, MapPin, ShoppingBag, ArrowUpDown, Filter } from "lucide-react";
+import Link from "next/link";
+import { Settings } from "lucide-react";
 
 // 1. Define your simple categories
 const CATEGORIES = ["All", "Paper", "Cloth"];
@@ -10,6 +12,7 @@ const CATEGORIES = ["All", "Paper", "Cloth"];
 export default function Marketplace() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // 2. State for Filters & Sorting
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -19,8 +22,16 @@ export default function Marketplace() {
     // Initialize Telegram
     if (typeof window !== "undefined" && (window as any).Telegram?.WebApp) {
       const tg = (window as any).Telegram.WebApp;
+      const user = tg.initDataUnsafe?.user;
       tg.ready();
       tg.expand();
+
+      if (
+        user &&
+        String(user.id) === process.env.NEXT_PUBLIC_ADMIN_TELEGRAM_ID
+      ) {
+        setIsAdmin(true);
+      }
     }
 
     // Fetch Data
@@ -55,22 +66,34 @@ export default function Marketplace() {
     <main className="min-h-screen bg-gray-50 pb-20">
       {/* HEADER */}
       <header className="bg-green-700 text-white p-5 rounded-b-3xl shadow-md sticky top-0 z-10">
-        <h1 className="text-xl font-bold flex items-center gap-2">
-          <ShoppingBag className="text-green-300" /> Green Supply
-        </h1>
+        {/* TOP ROW: Logo and Admin Button */}
+        <div className="flex justify-between items-center">
+          <h1 className="text-xl font-bold flex items-center gap-2">
+            <ShoppingBag className="text-green-300" /> Green Supply
+          </h1>
 
-        {/* CONTROLS ROW */}
-        <div className="flex justify-between items-center mt-4">
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className="p-2 bg-green-800/50 hover:bg-green-800 rounded-full transition-all border border-green-600 shadow-inner"
+            >
+              <Settings size={20} className="text-green-200" />
+            </Link>
+          )}
+        </div>
+
+        {/* CONTROLS ROW: Filters & Sort */}
+        <div className="flex justify-between items-center mt-5">
           {/* A. Category Filters */}
           <div className="flex gap-2 overflow-x-auto scrollbar-hide">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
                   selectedCategory === cat
                     ? "bg-white text-green-700 shadow-sm"
-                    : "bg-green-800 text-green-100 border border-green-600"
+                    : "bg-green-800/40 text-green-100 border border-green-600"
                 }`}
               >
                 {cat}
@@ -81,10 +104,10 @@ export default function Marketplace() {
           {/* B. Sort Toggle */}
           <button
             onClick={() => setSortAscending(!sortAscending)}
-            className="flex items-center gap-1 text-xs font-medium bg-green-900/50 px-3 py-1.5 rounded-lg border border-green-600 ml-2"
+            className="flex items-center gap-1 text-xs font-medium bg-green-900/30 px-3 py-1.5 rounded-lg border border-green-600 ml-2 whitespace-nowrap"
           >
             <ArrowUpDown size={12} />
-            {sortAscending ? "Price: Low" : "Price: High"}
+            {sortAscending ? "Low" : "High"}
           </button>
         </div>
       </header>
