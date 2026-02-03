@@ -16,6 +16,46 @@ export default function Marketplace() {
   // 2. State for Filters & Sorting
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortAscending, setSortAscending] = useState(true); // true = Low to High
+  // 1. State for storing reviews (put this with your other states)
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [activeProductId, setActiveProductId] = useState<number | null>(null);
+
+  // 2. Fetch reviews from Supabase
+  const fetchReviews = async () => {
+    const { data } = await supabase
+      .from("reviews")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (data) setReviews(data);
+  };
+
+  useEffect(() => {
+    fetchReviews();
+  }, []);
+
+  // 3. Submit a new review
+  const submitReview = async (productId: number) => {
+    if (!newComment.trim()) return;
+
+    // Get name from Telegram or use "Customer"
+    const tgUser = (window as any).Telegram?.WebApp?.initDataUnsafe?.user;
+    const userName = tgUser?.first_name || "Guest User";
+
+    const { error } = await supabase.from("reviews").insert([
+      {
+        product_id: productId,
+        user_name: userName,
+        rating: 5, // Defaulting to 5 for now to keep it simple
+        comment: newComment,
+      },
+    ]);
+
+    if (!error) {
+      setNewComment("");
+      fetchReviews(); // Refresh
+    }
+  };
 
   useEffect(() => {
     // Initialize Telegram
@@ -197,6 +237,57 @@ export default function Marketplace() {
                     <Phone size={14} /> Call
                   </a>
                 </div>
+              </div>
+
+              {/* REVIEWS SECTION */}
+              <div className="mt-4 pt-4 border-t border-gray-50">
+                <button
+                  onClick={() =>
+                    setActiveProductId(
+                      activeProductId === product.id ? null : product.id,
+                    )
+                  }
+                  className="text-xs font-bold text-gray-400 flex items-center gap-1 hover:text-green-600 transition-colors"
+                >
+                  💬 {reviews.filter((r) => r.product_id === product.id).length}{" "}
+                  Reviews
+                </button>
+
+                {activeProductId === product.id && (
+                  <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2">
+                    {/* Existing Reviews */}
+                    <div className="max-h-32 overflow-y-auto space-y-2 pr-2 scrollbar-hide">
+                      {reviews
+                        .filter((r) => r.product_id === product.id)
+                        .map((rev, i) => (
+                          <div key={i} className="bg-gray-50 p-2 rounded-lg">
+                            <p className="text-[10px] font-black text-gray-900">
+                              {rev.user_name}
+                            </p>
+                            <p className="text-xs text-gray-600 leading-tight">
+                              {rev.comment}
+                            </p>
+                          </div>
+                        ))}
+                    </div>
+
+                    {/* Write a Review Input */}
+                    <div className="flex gap-2">
+                      <input
+                        placeholder="Write a comment..."
+                        className="flex-1 bg-gray-100 border-none rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-green-500"
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                      />
+                      <button
+                        onClick={() => submitReview(product.id)}
+                        className="bg-green-600 text-white px-3 py-2 rounded-xl text-xs font-bold active:scale-90 transition-transform"
+                      >
+                        Send
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ))
