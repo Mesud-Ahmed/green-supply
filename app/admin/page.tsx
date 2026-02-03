@@ -16,6 +16,7 @@ export default function AdminPage() {
 
   const [formData, setFormData] = useState({
     title: "",
+    description: "",
     price_per_unit: "",
     min_order_qty: "100",
     material_type: "Paper",
@@ -29,7 +30,10 @@ export default function AdminPage() {
       tg.ready();
       const user = tg.initDataUnsafe?.user;
       // Replace with your ID if needed, or keep using env var
-      if (user && String(user.id) === process.env.NEXT_PUBLIC_ADMIN_TELEGRAM_ID) {
+      if (
+        user &&
+        String(user.id) === process.env.NEXT_PUBLIC_ADMIN_TELEGRAM_ID
+      ) {
         setIsAdmin(true);
       }
     }
@@ -40,20 +44,20 @@ export default function AdminPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const newFiles = Array.from(e.target.files);
-      
+
       // Update Files State
       setSelectedFiles((prev) => [...prev, ...newFiles]);
 
       // Create Previews for UI
-      const newPreviews = newFiles.map(file => URL.createObjectURL(file));
+      const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
       setPreviewUrls((prev) => [...prev, ...newPreviews]);
     }
   };
 
   // 3. REMOVE SELECTED IMAGE
   const removeImage = (index: number) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
-    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+    setPreviewUrls((prev) => prev.filter((_, i) => i !== index));
   };
 
   // 4. MAIN SUBMIT LOGIC (The Magic Part)
@@ -69,21 +73,21 @@ export default function AdminPage() {
       if (selectedFiles.length > 0) {
         for (const file of selectedFiles) {
           // Create a unique name: timestamp-random.jpg
-          const fileExt = file.name.split('.').pop();
+          const fileExt = file.name.split(".").pop();
           const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
           const filePath = `${fileName}`; // Uploading to root of bucket
 
           const { error: uploadError } = await supabase.storage
-            .from('bag-images')
+            .from("bag-images")
             .upload(filePath, file);
 
           if (uploadError) throw uploadError;
 
           // Get the Public URL
           const { data } = supabase.storage
-            .from('bag-images')
+            .from("bag-images")
             .getPublicUrl(filePath);
-          
+
           uploadedImageUrls.push(data.publicUrl);
         }
       }
@@ -92,6 +96,7 @@ export default function AdminPage() {
       const { error: dbError } = await supabase.from("products").insert([
         {
           title: formData.title,
+          description: formData.description,
           price_per_unit: parseFloat(formData.price_per_unit),
           min_order_qty: parseInt(formData.min_order_qty),
           material_type: formData.material_type,
@@ -107,7 +112,6 @@ export default function AdminPage() {
       setFormData({ ...formData, title: "", price_per_unit: "" });
       setSelectedFiles([]);
       setPreviewUrls([]);
-      
     } catch (error: any) {
       setStatus("Error: " + error.message);
     } finally {
@@ -115,9 +119,36 @@ export default function AdminPage() {
     }
   };
 
+  // 5. DELETE LOGIC
+  const [allProducts, setAllProducts] = useState<any[]>([]);
+
+  // Fetch products for the list
+  const fetchAdminProducts = async () => {
+    const { data } = await supabase
+      .from("products")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (data) setAllProducts(data);
+  };
+
+  useEffect(() => {
+    if (isAdmin) fetchAdminProducts();
+  }, [isAdmin]);
+
+  const deleteProduct = async (id: number) => {
+    if (confirm("Are you sure you want to delete this product?")) {
+      const { error } = await supabase.from("products").delete().eq("id", id);
+      if (!error) {
+        alert("Deleted!");
+        fetchAdminProducts(); // Refresh the list
+      }
+    }
+  };
+
   // --- RENDER ---
 
-  if (loading) return <div className="p-10 text-center font-bold">Verifying...</div>;
+  if (loading)
+    return <div className="p-10 text-center font-bold">Verifying...</div>;
 
   if (!isAdmin) {
     return (
@@ -137,23 +168,22 @@ export default function AdminPage() {
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          
           {/* IMAGE UPLOAD UI */}
           <div>
             <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
               Product Photos
             </label>
-            
+
             {/* The Hidden Input + Big Button */}
-            <input 
-              type="file" 
-              multiple 
+            <input
+              type="file"
+              multiple
               accept="image/*"
               onChange={handleFileSelect}
               className="hidden"
               id="file-upload"
             />
-            <label 
+            <label
               htmlFor="file-upload"
               className="border-2 border-dashed border-gray-300 rounded-2xl p-6 flex flex-col items-center justify-center text-gray-400 hover:bg-gray-50 hover:border-green-500 transition-all cursor-pointer"
             >
@@ -166,8 +196,11 @@ export default function AdminPage() {
               <div className="flex gap-2 mt-4 overflow-x-auto pb-2">
                 {previewUrls.map((url, i) => (
                   <div key={i} className="relative w-20 h-20 flex-shrink-0">
-                    <img src={url} className="w-full h-full object-cover rounded-lg border border-gray-200" />
-                    <button 
+                    <img
+                      src={url}
+                      className="w-full h-full object-cover rounded-lg border border-gray-200"
+                    />
+                    <button
                       type="button"
                       onClick={() => removeImage(i)}
                       className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md"
@@ -182,19 +215,37 @@ export default function AdminPage() {
 
           {/* Title Input */}
           <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Title</label>
+            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
+              Title
+            </label>
             <input
               required
               className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold focus:border-green-600 outline-none"
               placeholder="e.g., 2kg Kraft Paper Bag"
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, title: e.target.value })
+              }
             />
           </div>
-
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
+              Description (Optional)
+            </label>
+            <textarea
+              className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-medium outline-none focus:border-green-600 h-24 resize-none"
+              placeholder="Add details like dimensions (30x40cm), usage, or specific features..."
+              value={formData.description}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+            />
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Price</label>
+              <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
+                Price
+              </label>
               <input
                 required
                 type="number"
@@ -202,31 +253,44 @@ export default function AdminPage() {
                 className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold focus:border-green-600 outline-none"
                 placeholder="5.50"
                 value={formData.price_per_unit}
-                onChange={(e) => setFormData({ ...formData, price_per_unit: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, price_per_unit: e.target.value })
+                }
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Min Order</label>
+              <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
+                Min Order
+              </label>
               <input
                 required
                 type="number"
                 className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold focus:border-green-600 outline-none"
                 value={formData.min_order_qty}
-                onChange={(e) => setFormData({ ...formData, min_order_qty: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, min_order_qty: e.target.value })
+                }
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Material</label>
+            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
+              Material
+            </label>
             <select
-              className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold focus:border-green-600 outline-none"
+              className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold outline-none focus:border-green-600"
               value={formData.material_type}
-              onChange={(e) => setFormData({ ...formData, material_type: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, material_type: e.target.value })
+              }
             >
               <option value="Paper">Paper</option>
               <option value="Cloth">Cloth</option>
+              <option value="Canvas">Canvas</option>
+              <option value="Jute">Jute</option>
               <option value="Non-Woven">Non-Woven</option>
+              <option value="Other">Other</option>
             </select>
           </div>
 
@@ -234,7 +298,9 @@ export default function AdminPage() {
             type="submit"
             disabled={uploading}
             className={`w-full text-white font-black py-5 rounded-2xl shadow-xl transition-all text-lg flex justify-center items-center gap-2 ${
-              uploading ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 shadow-green-200 active:scale-95"
+              uploading
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-green-600 hover:bg-green-700 shadow-green-200 active:scale-95"
             }`}
           >
             {uploading ? <Loader2 className="animate-spin" /> : <Upload />}
@@ -242,13 +308,57 @@ export default function AdminPage() {
           </button>
 
           {status && (
-            <div className={`p-4 rounded-xl text-center font-bold text-sm ${
-              status.includes("Error") ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
-            }`}>
+            <div
+              className={`p-4 rounded-xl text-center font-bold text-sm ${
+                status.includes("Error")
+                  ? "bg-red-100 text-red-700"
+                  : "bg-green-100 text-green-700"
+              }`}
+            >
               {status}
             </div>
           )}
         </form>
+        <div className="mt-12 border-t pt-8">
+          <h2 className="text-xl font-black mb-6 flex items-center gap-2">
+            <ShieldAlert className="text-orange-500" size={20} /> Manage
+            Inventory
+          </h2>
+
+          <div className="space-y-4">
+            {allProducts.map((p) => (
+              <div
+                key={p.id}
+                className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100"
+              >
+                <div className="flex items-center gap-3">
+                  {/* Show first image thumbnail if exists */}
+                  <div className="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden">
+                    {p.image_url?.[0] && (
+                      <img
+                        src={p.image_url[0]}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900 text-sm">{p.title}</p>
+                    <p className="text-xs text-gray-500">
+                      {p.price_per_unit} ETB
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => deleteProduct(p.id)}
+                  className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </main>
   );

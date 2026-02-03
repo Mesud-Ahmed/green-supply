@@ -6,8 +6,7 @@ import { Phone, MapPin, ShoppingBag, ArrowUpDown, Filter } from "lucide-react";
 import Link from "next/link";
 import { Settings } from "lucide-react";
 
-// 1. Define your simple categories
-const CATEGORIES = ["All", "Paper", "Cloth"];
+const CATEGORIES = ["All", "Paper", "Cloth", "Canvas", "Jute", "Other"];
 
 export default function Marketplace() {
   const [products, setProducts] = useState<any[]>([]);
@@ -108,7 +107,7 @@ export default function Marketplace() {
           >
             <h2>price</h2>
             <ArrowUpDown size={12} />
-            {sortAscending ? "Low" : "High"}
+            {sortAscending ? "Lowest first" : "Highest first"}
           </button>
         </div>
       </header>
@@ -174,13 +173,18 @@ export default function Marketplace() {
                     <h2 className="font-bold text-gray-800 text-lg leading-tight">
                       {product.title}
                     </h2>
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded mt-1 inline-block">
-                      Min Order: {product.min_order_qty} pcs
-                    </span>
+                    {product.description && (
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">
+                        {product.description}
+                      </p>
+                    )}
                   </div>
                 </div>
+                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded mt-1 inline-block">
+                  Min Order: {product.min_order_qty} pcs
+                </span>
 
-                <div className="flex items-center justify-between mt-4">
+                <div className="flex items-center justify-between mt-2 pt-3 border-t border-gray-50">
                   <div className="flex items-center gap-1 text-xs text-gray-500">
                     <MapPin size={12} />
                     {product.sellers.location}
