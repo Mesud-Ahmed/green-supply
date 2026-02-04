@@ -5,7 +5,7 @@ import Link from "next/link";
 
 export default function Header({ isAdmin }: { isAdmin: boolean }) {
   return (
-    <header className=" text-white p-5  sticky top-0 z-50">
+    <header className=" text-white   sticky top-0 z-50">
       
       <div className="flex justify-between items-start">
         <div>

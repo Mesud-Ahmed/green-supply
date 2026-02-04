@@ -42,7 +42,7 @@ export default function Marketplace() {
 
   return (
     <main className="min-h-screen bg-gray-50 pb-20">
-      <header className="bg-green-800 text-white p-5 sticky top-0 z-50 shadow-md">
+      <header className="bg-green-800 text-white p-2 sticky top-0 z-50 shadow-md">
         <Header isAdmin={isAdmin} />
 
         <div className="flex justify-between items-center mt-4">
