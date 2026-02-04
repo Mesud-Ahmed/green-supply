@@ -4,36 +4,46 @@ import { supabase } from '@/lib/supabase';
 
 const bot = new Telegraf(process.env.BOT_TOKEN!);
 
+// --- 1. UTILS: Sanitization & Helpers ---
+// Trims text and cuts it off if it's too long to prevent database errors
+const sanitize = (text: string | undefined, maxLength: number) => {
+  if (!text) return "";
+  const clean = text.trim();
+  return clean.length > maxLength ? clean.substring(0, maxLength) + "..." : clean;
+};
+
 // Helper to update progress in Supabase
 async function updateState(userId: string, data: any) {
   await supabase.from('bot_submissions').upsert({ user_id: userId, ...data });
 }
 
-// 1. Start Command
+// --- 2. COMMANDS ---
+
+// Start Command
 bot.command('start', (ctx) => ctx.reply(
-  'Welcome! / ሰላም!\nUse /sell to submit a product.\nምርቶችዎን ለመሸጥ 👉 /sell የሚለውን ይጫኑ።'
+  'Welcome! / ሰላም!\n\n🛍️ Sell Products: /sell\n💬 Send Feedback: /feedback\n\n(ምርቶችን ለመሸጥ 👉 /sell \n አስተያየት ለመስጠት 👉 /feedback ይጫኑ)'
 ));
 
-// 2. Start Selling Process (UPDATED for Returning Users)
+// Feedback Command (New Feature)
+bot.command('feedback', async (ctx) => {
+  const userId = String(ctx.from.id);
+  // Set state to FEEDBACK so the NEXT message they send is captured
+  await updateState(userId, { step: 'FEEDBACK' });
+  ctx.reply("Please write your question, feedback, or suggestion below:\n(እባክዎ ጥያቄዎን ወይም አስተያየትዎን ከታች ይፃፉ)");
+});
+
+// Sell Command
 bot.command('sell', async (ctx) => {
   const userId = String(ctx.from.id);
   
   // Check if we already know this seller
-  const { data: existingState } = await supabase
-    .from('bot_submissions')
-    .select('*')
-    .eq('user_id', userId)
-    .single();
+  const { data: existingState } = await supabase.from('bot_submissions').select('*').eq('user_id', userId).single();
 
   // IF seller exists and has a shop name, skip registration
   if (existingState && existingState.shop_name) {
     await updateState(userId, { 
       step: 'TITLE', 
-      title: null, 
-      price: null, 
-      description: null, 
-      material: null, 
-      min_order: null 
+      title: null, price: null, description: null, material: null, min_order: null 
     });
     return ctx.reply(`Welcome back, ${existingState.shop_name}!\n\nLet's add a new product. What is the Product Title? (e.g., 2kg Kraft Bag)\n(እንኳን ደህና መጡ! የምርቱ ስም ምንድነው?)`);
   }
@@ -43,55 +53,82 @@ bot.command('sell', async (ctx) => {
   ctx.reply("Let's start! What is your Phone Number? \n(የስልክ ቁጥርዎን ያስገቡ)");
 });
 
-// 3. The Main Logic Loop
+// Reset Command (To clear shop info)
+bot.command('reset', async (ctx) => {
+  const userId = String(ctx.from.id);
+  await supabase.from('bot_submissions').delete().eq('user_id', userId);
+  ctx.reply("Settings reset. Press /sell to start from the beginning.");
+});
+
+// Done Command
+bot.command('done', async (ctx) => {
+    const userId = String(ctx.from.id);
+    await handleDone(ctx, userId);
+});
+
+
+// --- 3. MAIN MESSAGE LOOP ---
 bot.on(['text', 'photo'], async (ctx: any) => {
   const userId = String(ctx.from.id);
   
-  // Skip if it's a command like /sell or /start
-  if (ctx.message.text && ctx.message.text.startsWith('/')) {
-    if (ctx.message.text === '/done') return handleDone(ctx, userId);
-    // Add a reset option just in case they want to change shop details
-    if (ctx.message.text === '/reset') return handleReset(ctx, userId);
-    return; 
-  }
+  // A. IGNORE COMMANDS here (they are handled above)
+  if (ctx.message.text && ctx.message.text.startsWith('/')) return;
 
-  // Fetch current state
+  // B. FETCH STATE
   const { data: state } = await supabase.from('bot_submissions').select('*').eq('user_id', userId).single();
   
-  if (!state) return; // Ignore random messages if not in "sell" mode
+  // C. FILTER RANDOM CHATTER: If state is IDLE or missing, ignore the message
+  if (!state || state.step === 'IDLE') return;
 
-  const text = ctx.message.text;
+  const rawText = ctx.message.text;
 
-  // --- STEP 1: PHONE ---
+  // --- D. LOGIC FLOW ---
+
+  // 1. HANDLE FEEDBACK
+  if (state.step === 'FEEDBACK') {
+    const feedbackMsg = sanitize(rawText, 1000); // Allow longer text for feedback
+    
+    // Forward to Admin
+    await bot.telegram.sendMessage(process.env.NEXT_PUBLIC_ADMIN_TELEGRAM_ID!, 
+      `💡 **NEW FEEDBACK**\n👤 User: @${ctx.from.username || 'unknown'}\n📝 Msg: ${feedbackMsg}`
+    );
+
+    // Reset user to IDLE
+    await updateState(userId, { step: 'IDLE' });
+    return ctx.reply("Thank you! Your message has been sent to the admin.\n(መልእክትዎ ተልኳል! እናመሰግናለን!)");
+  }
+
+  // 2. HANDLE SELLING STEPS (With Sanitization)
+  
   if (state.step === 'PHONE') {
-    await updateState(userId, { phone_number: text, step: 'SHOP_NAME' });
+    const phone = sanitize(rawText, 20);
+    await updateState(userId, { phone_number: phone, step: 'SHOP_NAME' });
     return ctx.reply("What is your Shop Name? \n(የሱቅዎ ስም ምንድነው?)");
   }
 
-  // --- STEP 2: SHOP NAME ---
   if (state.step === 'SHOP_NAME') {
-    await updateState(userId, { shop_name: text, step: 'LOCATION' });
+    const shop = sanitize(rawText, 50); // Limit shop name to 50 chars
+    await updateState(userId, { shop_name: shop, step: 'LOCATION' });
     return ctx.reply("Where is your Shop Location? (e.g., Merkato) \n(የሱቅዎ አድራሻ ወይንም አካባቢ?)");
   }
 
-  // --- STEP 3: LOCATION ---
   if (state.step === 'LOCATION') {
-    await updateState(userId, { location: text, step: 'TITLE' });
+    const loc = sanitize(rawText, 50);
+    await updateState(userId, { location: loc, step: 'TITLE' });
     return ctx.reply("What is the Product Title? (e.g., 2kg Kraft Bag) \n(የምርቱ ስም ምንድነው?)");
   }
 
-  // --- STEP 4: TITLE ---
   if (state.step === 'TITLE') {
-    await updateState(userId, { title: text, step: 'DESCRIPTION' });
+    const title = sanitize(rawText, 60);
+    await updateState(userId, { title: title, step: 'DESCRIPTION' });
     return ctx.reply("Add a short Description (Optional). Type /skip if none. \n(ስለ ምርቱ አጭር መግለጫ ያስገቡ, መግለጫ የማይፈልጉ ከሆነ 👉 /skip የሚለውን ይጫኑ)");
   }
 
-  // --- STEP 5: DESCRIPTION ---
   if (state.step === 'DESCRIPTION') {
-    const desc = text.toLowerCase() === '/skip' ? "" : text;
-    await updateState(userId, { description: desc, step: 'MATERIAL' });
+    const descInput = sanitize(rawText, 300);
+    const desc = descInput.toLowerCase() === '/skip' ? "" : descInput;
     
-    // Show buttons for Material
+    await updateState(userId, { description: desc, step: 'MATERIAL' });
     return ctx.reply("Choose the Material Type: \n(የምርቱ አይነት ይምረጡ)", Markup.keyboard([
       ['Paper (የወረቀት)', 'Cloth (የጨርቅ)'],
       ['Canvas (የሸራ)', 'Jute (የቃጫ )'],
@@ -99,21 +136,22 @@ bot.on(['text', 'photo'], async (ctx: any) => {
     ]).oneTime().resize());
   }
 
-  // --- STEP 6: MATERIAL ---
   if (state.step === 'MATERIAL') {
-    await updateState(userId, { material: text, step: 'MIN_ORDER' });
+    // Validate that input is not too long (in case they type manually)
+    const material = sanitize(rawText, 30);
+    await updateState(userId, { material: material, step: 'MIN_ORDER' });
     return ctx.reply("What is the Minimum Order Quantity? \n(ዝቅተኛ የትዕዛዝ መጠን ስንት ነው?)", Markup.removeKeyboard());
   }
 
-  // --- STEP 7: MIN ORDER ---
   if (state.step === 'MIN_ORDER') {
-    await updateState(userId, { min_order: text, step: 'PRICE' });
+    const minOrder = sanitize(rawText, 20);
+    await updateState(userId, { min_order: minOrder, step: 'PRICE' });
     return ctx.reply("What is the Price per Unit (ETB)? \n(የአንዱ ዋጋ ስንት ነው?)");
   }
 
-  // --- STEP 8: PRICE ---
   if (state.step === 'PRICE') {
-    await updateState(userId, { price: text, step: 'PHOTO' });
+    const price = sanitize(rawText, 20);
+    await updateState(userId, { price: price, step: 'PHOTO' });
     
     // SEND SUMMARY TO ADMIN
     const summary = `
@@ -124,24 +162,22 @@ bot.on(['text', 'photo'], async (ctx: any) => {
 📍 **Loc:** ${state.location}
 ---------------------------
 🏷️ **Item:** ${state.title}
-📝 **Desc:** ${text} 
+📝 **Desc:** ${state.description || "None"} 
 🧵 **Mat:** ${state.material}
 📦 **Min:** ${state.min_order}
-💰 **Price:** ${text} ETB
+💰 **Price:** ${price} ETB
     `;
     await bot.telegram.sendMessage(process.env.NEXT_PUBLIC_ADMIN_TELEGRAM_ID!, summary);
 
     return ctx.reply("Great! Now send me Photos of the product.\n(የምርቱን ፎቶዎች ይላኩ)\n\n📸 You can send multiple! Type /done when finished.\n(በቂ ፎቶ ከላኩ በኋላ 👉 /done ብለው ይፃፉ)");
   }
 
-  // --- STEP 9: PHOTOS (Loop) ---
   if (state.step === 'PHOTO') {
     if (ctx.message.photo) {
       const photoId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
       await bot.telegram.sendPhoto(process.env.NEXT_PUBLIC_ADMIN_TELEGRAM_ID!, photoId, {
         caption: `📸 Photo from ${state.shop_name}`
       });
-      
       return ctx.reply("Photo received! Send another or type /done to finish.\n(ፎቶው ደርሷል! ሌላ ፎቶ ይላኩ ወይም ለመጨረስ 👉 /done ብለው ይፃፉ)");
     } else {
       return ctx.reply("Please send a photo or type /done.\n(እባክዎ ፎቶ ይላኩ ወይም 👉 /done ብለው ይፃፉ)");
@@ -149,35 +185,25 @@ bot.on(['text', 'photo'], async (ctx: any) => {
   }
 });
 
-// 4. Handle Finish (UPDATED: Don't delete, just reset product fields)
+// --- 4. FINISH HANDLER ---
 async function handleDone(ctx: any, userId: string) {
+  // Set to IDLE (stops listening to messages)
   await updateState(userId, { 
-    step: 'IDLE', // Set to IDLE so they aren't stuck in "sell" mode
-    title: null, 
-    price: null, 
-    description: null, 
-    material: null, 
-    min_order: null 
-    // We KEEP phone, shop_name, and location!
+    step: 'IDLE', 
+    title: null, price: null, description: null, material: null, min_order: null 
   });
   
   await ctx.reply("✅ Submission Complete! \nAdmin will review your product soon.\n(ምርቱ ለግምገማ ተልኳል! እናመሰግናለን!)");
 }
 
-// Optional: Allow them to change shop info if they want
-async function handleReset(ctx: any, userId: string) {
-  await supabase.from('bot_submissions').delete().eq('user_id', userId);
-  await ctx.reply("Settings reset. Press /sell to start from the beginning.");
-}
-
-// 5. Next.js Route Handler
+// --- 5. NEXT.JS HANDLER ---
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     await bot.handleUpdate(body);
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error(err);
+    console.error("Bot Error:", err);
     return NextResponse.json({ error: "Error" }, { status: 500 });
   }
 }
