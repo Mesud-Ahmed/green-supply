@@ -10,7 +10,7 @@ export function useMarketplace() {
     const { data: prodData } = await supabase
       .from("products")
       .select(`*, sellers(name, phone_number, location, is_verified)`);
-    
+
     const { data: revData } = await supabase
       .from("reviews")
       .select("*")
@@ -22,17 +22,29 @@ export function useMarketplace() {
   };
 
   // UPDATED: Added userId to the submission
-  const submitReview = async (productId: number, comment: string, userName: string, userId: string) => {
-    const { error } = await supabase.from("reviews").insert([{
-      product_id: productId,
-      user_name: userName,
-      user_id: userId, // Critical for knowing who can delete it
-      rating: 5,
-      comment: comment,
-    }]);
-    
-    if (!error) await fetchData(); 
-    return !error;
+  const submitReview = async (
+    productId: number,
+    comment: string,
+    userName: string,
+    userId: string,
+  ) => {
+    const { error } = await supabase.from("reviews").insert([
+      {
+        product_id: productId,
+        user_name: userName,
+        user_id: userId, // Critical for knowing who can delete it
+        rating: 5,
+        comment: comment,
+      },
+    ]);
+
+    if (error) {
+      console.error("Review Submit Error:", error.message); // This will tell us the exact issue
+      return false;
+    }
+
+    await fetchData();
+    return true;
   };
 
   // NEW: Delete function
@@ -51,7 +63,9 @@ export function useMarketplace() {
     return !error;
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   return { products, reviews, loading, submitReview, deleteReview };
 }
