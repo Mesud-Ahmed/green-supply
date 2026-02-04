@@ -21,7 +21,7 @@ async function updateState(userId: string, data: any) {
 
 // Start Command
 bot.command('start', (ctx) => ctx.reply(
-  'Welcome! / ሰላም!\n\n🛍️ Sell Products: /sell\n💬 Send Feedback: /feedback\n\n(ምርቶችን ለመሸጥ 👉 /sell \n አስተያየት ለመስጠት 👉 /feedback ይጫኑ)'
+  'Welcome! / ሰላም!\n\n🛍️ Sell Products: /sell\n💬 Send Feedback: /feedback\n\nምርቶችን ለመሸጥ 👉 /sell \n አስተያየት ለመስጠት 👉 /feedback ይጫኑ'
 ));
 
 // Feedback Command (New Feature)
@@ -45,12 +45,12 @@ bot.command('sell', async (ctx) => {
       step: 'TITLE', 
       title: null, price: null, description: null, material: null, min_order: null 
     });
-    return ctx.reply(`Welcome back, ${existingState.shop_name}!\n\nLet's add a new product. What is the Product Title? (e.g., 2kg Kraft Bag)\n(እንኳን ደህና መጡ! የምርቱ ስም ምንድነው?)`);
+    return ctx.reply(`Welcome back, ${existingState.shop_name}!\n\nLet's add a new product. What is the Product Title? (e.g., 2kg paper Bag)\n\nእንኳን ደህና መጡ! የምርቱ ስም ምንድነው?`);
   }
 
   // ELSE start fresh
   await updateState(userId, { step: 'PHONE', shop_name: null, title: null, price: null });
-  ctx.reply("Let's start! What is your Phone Number? \n(የስልክ ቁጥርዎን ያስገቡ)");
+  ctx.reply("Let's start! What is your Phone Number? \n\n(የስልክ ቁጥርዎን ያስገቡ)");
 });
 
 // Reset Command (To clear shop info)
@@ -95,7 +95,7 @@ bot.on(['text', 'photo'], async (ctx: any) => {
 
     // Reset user to IDLE
     await updateState(userId, { step: 'IDLE' });
-    return ctx.reply("Thank you! Your message has been sent to the admin.\n(መልእክትዎ ተልኳል! እናመሰግናለን!)");
+    return ctx.reply("Thank you! Your message has been sent to the admin.\n\nመልእክትዎ ተልኳል! እናመሰግናለን!");
   }
 
   // 2. HANDLE SELLING STEPS (With Sanitization)
@@ -103,25 +103,25 @@ bot.on(['text', 'photo'], async (ctx: any) => {
   if (state.step === 'PHONE') {
     const phone = sanitize(rawText, 20);
     await updateState(userId, { phone_number: phone, step: 'SHOP_NAME' });
-    return ctx.reply("What is your Shop Name? \n(የሱቅዎ ስም ምንድነው?)");
+    return ctx.reply("What is your Shop Name? \n\nየሱቅዎ ስም ምንድነው?");
   }
 
   if (state.step === 'SHOP_NAME') {
     const shop = sanitize(rawText, 50); // Limit shop name to 50 chars
     await updateState(userId, { shop_name: shop, step: 'LOCATION' });
-    return ctx.reply("Where is your Shop Location? (e.g., Merkato) \n(የሱቅዎ አድራሻ ወይንም አካባቢ?)");
+    return ctx.reply("Where is your Shop Location? (e.g., Merkato) \n\nየሱቅዎ አድራሻ ወይንም አካባቢ?");
   }
 
   if (state.step === 'LOCATION') {
     const loc = sanitize(rawText, 50);
     await updateState(userId, { location: loc, step: 'TITLE' });
-    return ctx.reply("What is the Product Title? (e.g., 2kg Kraft Bag) \n(የምርቱ ስም ምንድነው?)");
+    return ctx.reply("What is the Product Title? (e.g., 2kg Kraft Bag) \n\nየምርቱ ስም ምንድነው?");
   }
 
   if (state.step === 'TITLE') {
     const title = sanitize(rawText, 60);
     await updateState(userId, { title: title, step: 'DESCRIPTION' });
-    return ctx.reply("Add a short Description (Optional). Type /skip if none. \n(ስለ ምርቱ አጭር መግለጫ ያስገቡ, መግለጫ የማይፈልጉ ከሆነ 👉 /skip የሚለውን ይጫኑ)");
+    return ctx.reply("Add a short Description (Optional). Type /skip if none. \n\nስለ ምርቱ አጭር መግለጫ ያስገቡ, መግለጫ የማይፈልጉ ከሆነ 👉 /skip የሚለውን ይጫኑ");
   }
 
   if (state.step === 'DESCRIPTION') {
@@ -129,7 +129,7 @@ bot.on(['text', 'photo'], async (ctx: any) => {
     const desc = descInput.toLowerCase() === '/skip' ? "" : descInput;
     
     await updateState(userId, { description: desc, step: 'MATERIAL' });
-    return ctx.reply("Choose the Material Type: \n(የምርቱ አይነት ይምረጡ)", Markup.keyboard([
+    return ctx.reply("Choose the Material Type: \n\nየምርቱ አይነት ይምረጡ", Markup.keyboard([
       ['Paper (የወረቀት)', 'Cloth (የጨርቅ)'],
       ['Canvas (የሸራ)', 'Jute (የቃጫ )'],
       ['Other (ሌላ)']
@@ -140,13 +140,13 @@ bot.on(['text', 'photo'], async (ctx: any) => {
     // Validate that input is not too long (in case they type manually)
     const material = sanitize(rawText, 30);
     await updateState(userId, { material: material, step: 'MIN_ORDER' });
-    return ctx.reply("What is the Minimum Order Quantity? \n(ዝቅተኛ የትዕዛዝ መጠን ስንት ነው?)", Markup.removeKeyboard());
+    return ctx.reply("What is the Minimum Order Quantity? \n\nዝቅተኛ የሚቀበሉት የትዕዛዝ መጠን ስንት ነው?", Markup.removeKeyboard());
   }
 
   if (state.step === 'MIN_ORDER') {
     const minOrder = sanitize(rawText, 20);
     await updateState(userId, { min_order: minOrder, step: 'PRICE' });
-    return ctx.reply("What is the Price per Unit (ETB)? \n(የአንዱ ዋጋ ስንት ነው?)");
+    return ctx.reply("What is the Price per Unit (ETB)? \n\nየአንዱ ዋጋ ስንት ነው?");
   }
 
   if (state.step === 'PRICE') {
@@ -169,7 +169,7 @@ bot.on(['text', 'photo'], async (ctx: any) => {
     `;
     await bot.telegram.sendMessage(process.env.NEXT_PUBLIC_ADMIN_TELEGRAM_ID!, summary);
 
-    return ctx.reply("Great! Now send me Photos of the product.\n(የምርቱን ፎቶዎች ይላኩ)\n\n📸 You can send multiple! Type /done when finished.\n(በቂ ፎቶ ከላኩ በኋላ 👉 /done ብለው ይፃፉ)");
+    return ctx.reply("Great! Now send me Photos of the product.\n📸 You can send multiple! Type /done when finished.\n\nየምርቱን ፎቶዎች ይላኩ. በቂ ፎቶ ከላኩ በኋላ 👉 /done ብለው ይፃፉ");
   }
 
   if (state.step === 'PHOTO') {
@@ -178,9 +178,9 @@ bot.on(['text', 'photo'], async (ctx: any) => {
       await bot.telegram.sendPhoto(process.env.NEXT_PUBLIC_ADMIN_TELEGRAM_ID!, photoId, {
         caption: `📸 Photo from ${state.shop_name}`
       });
-      return ctx.reply("Photo received! Send another or type /done to finish.\n(ፎቶው ደርሷል! ሌላ ፎቶ ይላኩ ወይም ለመጨረስ 👉 /done ብለው ይፃፉ)");
+      return ctx.reply("Photo received! Send another or type /done to finish.\nፎቶው ደርሷል! ሌላ ፎቶ ይላኩ ወይም ለመጨረስ 👉 /done ብለው ይፃፉ");
     } else {
-      return ctx.reply("Please send a photo or type /done.\n(እባክዎ ፎቶ ይላኩ ወይም 👉 /done ብለው ይፃፉ)");
+      return ctx.reply("Please send a photo or type /done.\nእባክዎ ፎቶ ይላኩ ወይም 👉 /done ብለው ይፃፉ");
     }
   }
 });
@@ -193,7 +193,7 @@ async function handleDone(ctx: any, userId: string) {
     title: null, price: null, description: null, material: null, min_order: null 
   });
   
-  await ctx.reply("✅ Submission Complete! \nAdmin will review your product soon.\n(ምርቱ ለግምገማ ተልኳል! እናመሰግናለን!)");
+  await ctx.reply("✅ Submission Complete! \nAdmin will review your product and publish it soon.\n\nምርቱ ለግምገማ ተልኳል! እናመሰግናለን!");
 }
 
 // --- 5. NEXT.JS HANDLER ---

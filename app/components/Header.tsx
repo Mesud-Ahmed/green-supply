@@ -18,7 +18,7 @@ export default function Header({ isAdmin }: { isAdmin: boolean }) {
             EcoPack <span className="text-green-200">Addis</span>
           </h1>
           <div className="flex items-center gap-1.5 mt-1">
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
             <p className="text-sm text-green-100/90 leading-relaxed max-w-md">
     Access Addis Ababa’s largest selection of eco-friendly wholesale bags.
   </p>
