@@ -68,7 +68,7 @@ export default function Marketplace() {
           >
             <span className="font-bold">Price</span>
             <ArrowUpDown size={12} /> 
-            {sortAscending ? "Low" : "High"}
+            {sortAscending ? "Lowest First" : "Highest First"}
           </button>
         </div>
       </header>

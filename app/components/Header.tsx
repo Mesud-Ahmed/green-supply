@@ -20,7 +20,7 @@ export default function Header({ isAdmin }: { isAdmin: boolean }) {
           <div className="flex items-center gap-1.5 mt-1">
             <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
             <p className="text-sm text-green-100/90 leading-relaxed max-w-md">
-    Access Addis Ababa’s largest selection of eco-friendly wholesale bags with transparent pricing and direct seller contact.
+    Access Addis Ababa’s largest selection of eco-friendly wholesale bags.
   </p>
           </div>
         </div>
