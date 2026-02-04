@@ -21,18 +21,37 @@ export function useMarketplace() {
     setLoading(false);
   };
 
-  const submitReview = async (productId: number, comment: string, userName: string) => {
+  // UPDATED: Added userId to the submission
+  const submitReview = async (productId: number, comment: string, userName: string, userId: string) => {
     const { error } = await supabase.from("reviews").insert([{
       product_id: productId,
       user_name: userName,
+      user_id: userId, // Critical for knowing who can delete it
       rating: 5,
       comment: comment,
     }]);
-    if (!error) await fetchData(); // Refresh data
+    
+    if (!error) await fetchData(); 
+    return !error;
+  };
+
+  // NEW: Delete function
+  const deleteReview = async (reviewId: number) => {
+    const { error } = await supabase
+      .from("reviews")
+      .delete()
+      .eq("id", reviewId);
+
+    if (!error) {
+      // Optimistic UI update: remove from local state immediately
+      setReviews((prev) => prev.filter((r) => r.id !== reviewId));
+    } else {
+      console.error("Error deleting review:", error.message);
+    }
     return !error;
   };
 
   useEffect(() => { fetchData(); }, []);
 
-  return { products, reviews, loading, submitReview };
+  return { products, reviews, loading, submitReview, deleteReview };
 }
