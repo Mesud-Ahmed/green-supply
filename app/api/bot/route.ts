@@ -71,8 +71,9 @@ bot.command('done', async (ctx) => {
 bot.on(['text', 'photo'], async (ctx: any) => {
   const userId = String(ctx.from.id);
   
+  const rawText = ctx.message.text || "";
   // A. IGNORE COMMANDS here (they are handled above)
-  if (ctx.message.text && ctx.message.text.startsWith('/')) return;
+ if (rawText.startsWith('/') && rawText.toLowerCase() !== '/skip') return;
 
   // B. FETCH STATE
   const { data: state } = await supabase.from('bot_submissions').select('*').eq('user_id', userId).single();
@@ -80,7 +81,7 @@ bot.on(['text', 'photo'], async (ctx: any) => {
   // C. FILTER RANDOM CHATTER: If state is IDLE or missing, ignore the message
   if (!state || state.step === 'IDLE') return;
 
-  const rawText = ctx.message.text;
+
 
   // --- D. LOGIC FLOW ---
 
@@ -178,7 +179,7 @@ bot.on(['text', 'photo'], async (ctx: any) => {
       await bot.telegram.sendPhoto(process.env.NEXT_PUBLIC_ADMIN_TELEGRAM_ID!, photoId, {
         caption: `📸 Photo from ${state.shop_name}`
       });
-      return ctx.reply("Photo received! Send another or type /done to finish.\nፎቶው ደርሷል! ሌላ ፎቶ ይላኩ ወይም ለመጨረስ 👉 /done ብለው ይፃፉ");
+      return ctx.reply("Photo received! Send another or type /done to finish.\nፎቶውን ተቀብያለሁ! ሌላ ፎቶ ይላኩ ወይም ለመጨረስ 👉 /done ብለው ይፃፉ");
     } else {
       return ctx.reply("Please send a photo or type /done.\nእባክዎ ፎቶ ይላኩ ወይም 👉 /done ብለው ይፃፉ");
     }
@@ -193,7 +194,7 @@ async function handleDone(ctx: any, userId: string) {
     title: null, price: null, description: null, material: null, min_order: null 
   });
   
-  await ctx.reply("✅ Submission Complete! \nAdmin will review your product and publish it soon.\n\nምርቱ ለግምገማ ተልኳል! እናመሰግናለን!");
+  await ctx.reply("✅ Submission Complete! \nAdmin will review your product and publish it soon.\n\nምርትዎን ተቀብለናል! አገልግሎታችንን ስለተጠቀሙ እናመሰግናለን!");
 }
 
 // --- 5. NEXT.JS HANDLER ---
