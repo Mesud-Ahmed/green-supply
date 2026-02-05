@@ -40,7 +40,7 @@ export default function ReviewSection({ productId, reviews, onSubmit, onDelete }
                   {String(rev.user_id) === String(userId) && (
                     <button 
                       onClick={() => onDelete(rev.id)}
-                      className="text-gray-300 hover:text-red-500 transition-colors bg-white p-1 rounded-full shadow-sm opacity-0 group-hover:opacity-100 scale-90 hover:scale-105"
+                      className="text-red-500 transition-colors bg-white p-1 rounded-full shadow-sm"
                       title="Delete Review"
                     >
                       <Trash2 size={10} />
