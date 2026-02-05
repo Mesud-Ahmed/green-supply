@@ -41,20 +41,20 @@ export default function Marketplace() {
     );
 
   return (
-    <main className="min-h-screen bg-gray-50 pb-20">
-      <header className="bg-green-800 text-white p-2 sticky top-0 z-50 shadow-md">
+    <main className="min-h-screen bg-gray-50 ">
+      <header className="bg-emerald-950/85 backdrop-blur-xl border-b border-white/5 text-white p-4 sticky top-0 z-50 shadow-2xl transition-all duration-300">
         <Header isAdmin={isAdmin} />
 
-        <div className="flex justify-between items-center mt-4">
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+        <div className="flex justify-between items-center mt-6">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 mask-linear-fade">
             {CATEGORIES.map(cat => (
               <button 
                 key={cat.id} 
-                onClick={() => setSelectedCategory(cat.id)} // Set ID, not Label
-                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+                onClick={() => setSelectedCategory(cat.id)} 
+                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-300 transform ${
                   selectedCategory === cat.id 
-                    ? "bg-white text-green-800 shadow-lg" 
-                    : "bg-green-700/50 text-green-100"
+                    ? "bg-gradient-to-r from-green-400 to-green-500 text-green-950 shadow-lg shadow-green-500/30 scale-105" 
+                    : "bg-white/5 text-green-100/70 hover:bg-white/10 hover:text-white border border-white/5 hover:border-white/20"
                 }`}
               >
                 {cat.label}
@@ -64,11 +64,13 @@ export default function Marketplace() {
           
           <button 
             onClick={() => setSortAscending(!sortAscending)} 
-            className="flex items-center gap-1 text-[10px] bg-black/20 p-2 rounded-lg ml-2 hover:bg-black/30 transition-colors"
+            className="flex items-center gap-1.5 text-xs bg-white/5 hover:bg-white/10 p-2.5 rounded-xl ml-3 transition-all border border-white/5 hover:border-white/20 text-green-100/80 hover:text-white shrink-0"
           >
-            <span className="font-bold">Price</span>
-            <ArrowUpDown size={12} /> 
-            {sortAscending ? "Lowest First" : "Highest First"}
+            <span className="font-semibold tracking-wide">Price</span>
+            <div className={`transition-transform duration-300 ${sortAscending ? "rotate-0" : "rotate-180"}`}>
+               <ArrowUpDown size={14} /> 
+            </div>
+            {sortAscending ? "Low → High" : "High → Low"}
           </button>
         </div>
       </header>
